@@ -12,7 +12,7 @@ SCRIPT_PATH=$(readlink -f "${BASH_SOURCE[0]}")
 ORIZON_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
 ORIZON_LOGO="$ORIZON_DIR/branding/orizon-logo.png"
-ORIZON_LINK="https://taplink.cc/orizon"
+ORIZON_LINK="https://freesof.ru/orizon-os"
 WALLPAPER_PATH="/usr/share/backgrounds/orizon/orizon-default.png"
 
 # Application icons

@@ -11,7 +11,7 @@ USER_HOME=$(eval echo "~$INSTALL_USER")
 ORIZON_LOGO="$ORIZON_DIR/branding/orizon-logo.png"
 ORIZON_SETTINGS_ICON="$ORIZON_DIR/branding/orizon-settings.png"
 ORIZON_EXPLORER_ICON="$ORIZON_DIR/branding/orizon-nautilus-dolphin.png"
-ORIZON_LINK="https://taplink.cc/orizon"
+ORIZON_LINK="https://freesof.ru/orizon-os"
 WALLPAPER_PATH="/usr/share/backgrounds/orizon/orizon-default.png"
 
 # Application icons (from branding/ folder)
@@ -53,7 +53,7 @@ cat << 'BANNER'
   ██║   ██║██╔══██╗██║ ███╔╝  ██║   ██║██║╚██╗██║
   ╚██████╔╝██║  ██║██║███████╗╚██████╔╝██║ ╚████║
    ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
-           KDE PLASMA EDITION  |  Beta 2 / Fix 3
+           KDE PLASMA EDITION  |  Beta 2 / Fix 4
 BANNER
 }
 
@@ -858,5 +858,5 @@ echo -e "${GREEN}${BOLD}║   ORIZON installed successfully!  🚀          ║$
 echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  ${CYAN}Reboot the system:${NC} ${BOLD}sudo reboot${NC}"
-echo -e "  ${CYAN}Documentation, new OS version, support and Telegram channel: https://taplink.cc/orizon${NC}"
+echo -e "  ${CYAN}Documentation, new OS version, support and Telegram channel: https://freesof.ru/orizon-os${NC}"
 echo -e ""

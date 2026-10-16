@@ -1,7 +1,7 @@
 #!/bin/bash
-export ORIZON_VERSION="Beta 2/Fix 3"
+export ORIZON_VERSION="Beta 2/Fix 4"
 export ORIZON_BUILD="18-07-2026"
-export ORIZON_LINK="https://taplink.cc/orizon"
+export ORIZON_LINK="https://freesof.ru/orizon-os"
 export CLICOLOR=1
 export TERM=xterm-256color
 

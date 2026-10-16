@@ -74,7 +74,7 @@ if [ -d "$ORIZON_DIR/.git" ]; then
     log_ok "Repo updated to the latest commit on main"
 else
     log_warn "$ORIZON_DIR is not a git checkout — skipping repo update."
-    log_warn "Re-clone https://github.com/publuseba/orizon-os for automatic version pulls."
+    log_warn "Re-clone https://github.com/FreeSOF/orizon-os for automatic version pulls."
 fi
 
 # ── 4. System package upgrade (Plasma keeps running as-is) ─────────────────
