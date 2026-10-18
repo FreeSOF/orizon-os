@@ -20,9 +20,9 @@ chmod +x install-kde.sh
 sudo ./install-kde.sh
 ```
 ## 📝 Some screenshots?
-![Orizon1](https://i.postimg.cc/Gm7r97dY/67.png)
-![Orizon2](https://i.postimg.cc/Qd4sV4hp/gazan.png)
-![Orizon3](https://i.postimg.cc/Jz6mt6MN/sixseven.png)
+![Orizon1](https://i.postimg.cc/W3bkVRS1/Snimok-ekrana-2026-10-18-222206.png)
+![Orizon2](https://i.postimg.cc/0Q2wvgZr/Snimok-ekrana-2026-10-18-222310.png)
+![Orizon3](https://i.postimg.cc/Jn4k8wK0/Snimok-ekrana-2026-10-18-222420.png)
 
 *PUBLIC BETA. THIS PROJECT MAY BE UNSTABLE. ALL IS SUBJECT TO CHANGE.*
 
