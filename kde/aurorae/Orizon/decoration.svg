@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="32">
+  <g id="decoration">
+    <rect width="100" height="32" fill="#f3f3f3"/>
+    <rect y="31" width="100" height="1" fill="#e0e0e0"/>
+  </g>
+  <g id="decoration-inactive">
+    <rect width="100" height="32" fill="#fafafa"/>
+    <rect y="31" width="100" height="1" fill="#ebebeb"/>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+[General]
+Animation=0
+BorderBottom=1
+BorderLeft=1
+BorderRight=1
+BorderTop=0
+ButtonHeight=32
+ButtonSpacing=0
+ButtonWidth=46
+DecorationPosition=0
+DrawBorder=true
+PaddingBottom=4
+PaddingLeft=6
+PaddingRight=6
+PaddingTop=4

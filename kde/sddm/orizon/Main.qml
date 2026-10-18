@@ -1,684 +1,704 @@
-//
-// [maya] main.qml
-//
-// Main script for the SDDM theme
-//
-// (c) 2016 Sanjeev Premi (spremi@ymail.com)
-//
-// SPDX-License-Identifier: MIT
-//                          (https://spdx.org/licenses/MIT.html)
-//
+import QtQuick 2.15
+import QtQuick.Layouts 1.15
+import QtQuick.Controls 2.15
+import QtGraphicalEffects 1.0
+//import QtQuick.Shapes 1.17
+import "components"
 
-
-import QtQuick 2.0
-import SddmComponents 2.0
-
-import "./components"
 
 Rectangle {
-  id  : maya_root
+    width: 640
+    height: 480
+    LayoutMirroring.enabled: Qt.locale().textDirection === Qt.RightToLeft
+    LayoutMirroring.childrenInherit: true
+    property int sizeAvatar: 66
+    property int longitudMasLarga: 0
 
-  property color primaryShade : config.primaryShade ? config.primaryShade : "#303F9F"
-  property color primaryLight : config.primaryLight ? config.primaryLight : "#7986CB"
-  property color primaryDark  : config.primaryDark  ? config.primaryDark  : "#1A237E"
-
-  property color primaryHue1  : config.primaryHue1  ? config.primaryHue1  : "#5965B2"
-  property color primaryHue2  : config.primaryHue2  ? config.primaryHue2  : "#303F9F"
-  property color primaryHue3  : config.primaryHue3  ? config.primaryHue3  : "#2C3998"
-
-  property color accentShade  : config.accentShade  ? config.accentShade  : "#FF4081"
-  property color accentLight  : config.accentLight  ? config.accentLight  : "#FF80AB"
-
-  property color accentHue1   : config.accentHue1   ? config.accentHue1   : "#FF669A"
-  property color accentHue2   : config.accentHue2   ? config.accentHue2   : "#FF4081"
-  property color accentHue3   : config.accentHue3   ? config.accentHue3   : "#E73677"
-
-  property color normalText   : config.normalText   ? config.normalText   : "#ffffff"
-
-  property color successText  : config.successText  ? config.successText  : "#43a047"
-  property color failureText  : config.failureText  ? config.failureText  : "#e53935"
-  property color warningText  : config.warningText  ? config.warningText  : "#ff8f00"
-
-  property color rebootColor  : config.rebootColor  ? config.rebootColor  : "#fb8c00"
-  property color powerColor   : config.powerColor   ? config.powerColor   : "#ff1744"
-
-  readonly property color defaultBg : primaryShade ? primaryShade : "#1e88e5"
-
-  //
-  // Indicates one unit of measure (in pixels)
-  //
-  readonly property int spUnit: 64
-
-  //
-  // Symmetric (equal) padding on all sides
-  //
-  readonly property int padSym : (spUnit / 8)
-
-  //
-  // Asymmetric padding in horizontal & vertical directions
-  //
-  readonly property int padAsymH : (spUnit / 2)
-  readonly property int padAsymV : (spUnit / 8)
-
-  //
-  // Font sizes
-  //
-  readonly property int spFontNormal  : 24
-  readonly property int spFontSmall   : 16
-
-
-  LayoutMirroring.enabled: Qt.locale().textDirection == Qt.RightToLeft
-  LayoutMirroring.childrenInherit: true
-
-  TextConstants { id: textConstants }
-
-  Connections {
-    target: sddm
-
-    onLoginSucceeded: {
-      prompt_bg.color = successText
-      prompt_txt.text = textConstants.loginSucceeded
-
-      maya_busy.visible = false;
-      maya_busy_anim.stop()
-
-      anim_success.start()
+    property int implicitCustomWidth: 0
+    property ListModel jUser: users.usersList
+    property bool firtInteraction: true
+    property bool startAnimationNames: false
+    property int imageFadeIn: 250
+    property int imageFadeOut: 250
+    TextConstants {
+        id: textConstants
     }
-    onLoginFailed: {
-      prompt_bg.color = failureText
-      prompt_txt.text = textConstants.loginFailed
+    // hack for disable autostart QtQuick.VirtualKeyboard
 
-      maya_busy.visible = false;
-      maya_busy_anim.stop()
-
-      anim_failure.start()
+    UserModel {
+        id: users
     }
-    onInformationMessage: {
-      prompt_bg.color = failureText
-      prompt_txt.text = message
-
-      maya_busy.visible = false;
-      maya_busy_anim.stop()
-
-      anim_failure.start()
+    // Name used for login: selected user from the list, or the manually
+    // typed one when SDDM reports no users (like the Maya theme does).
+    function loginName() {
+        return users.finalLoginUserName !== "" ? users.finalLoginUserName
+                                               : manualUser.text
     }
-  }
+
+    FontLoader {
+        id: fontbold
+        source: "fonts/SFUIText-Semibold.otf"
+    }
+
+    // On-screen keyboard (toggled by the button next to the session picker)
+    Loader {
+        id: inputPanel
+        property bool keyboardActive: false
+        readonly property bool shown: keyboardActive && item !== null && item.active
+        source: "components/VirtualKeyboard.qml"
+        z: 100
+        width: Math.min(parent.width, 1000)
+        x: (parent.width - width) / 2
+        y: shown ? parent.height - height : parent.height
+        Behavior on y {
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
+        onKeyboardActiveChanged: {
+            if (item) item.activated = keyboardActive
+        }
+        onLoaded: item.activated = keyboardActive
+    }
+    Connections {
+        target: sddm
+        onLoginSucceeded: {
+
+        }
+        onLoginFailed: {
+            password.placeholderText = textConstants.loginFailed
+            password.placeholderTextColor = "white"
+            password.text = ""
+            password.forceActiveFocus()
+        }
+    }
+
+    Image {
+        id: wallpaper
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectCrop
+        visible: true
+        Binding on source {
+            when: config.background !== undefined
+            value: config.background
+        }
+
+    }
 
 
-  signal tryLogin()
 
-  onTryLogin : {
-    maya_busy.visible = true;
-    maya_busy_anim.start()
+    Row {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.rightMargin: 40
+        anchors.topMargin: 15
 
-    sddm.login(maya_username.text, maya_password.text, maya_session.index);
-  }
+        Item {
+
+            Image {
+                id: shutdown
+                height: 22
+                width: 22
+                source: "images/system-shutdown.svg"
+                fillMode: Image.PreserveAspectFit
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onEntered: {
+                        shutdown.source = "images/system-shutdown-hover.svg"
+                        var component = Qt.createComponent(
+                            "components/ShutdownToolTip.qml")
+                        if (component.status === Component.Ready) {
+                            var tooltip = component.createObject(shutdown)
+                            tooltip.x = -100
+                            tooltip.y = 40
+                            tooltip.destroy(600)
+                        }
+                    }
+                    onExited: {
+                        shutdown.source = "images/system-shutdown.svg"
+                    }
+                    onClicked: {
+                        shutdown.source = "images/system-shutdown-pressed.svg"
+                        sddm.powerOff()
+                    }
+                }
+            }
+        }
+    }
+
+    Row {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.rightMargin: 70
+        anchors.topMargin: 15
+
+        Item {
+
+            Image {
+                id: reboot
+                height: 22
+                width: 22
+                source: "images/system-reboot.svg"
+                fillMode: Image.PreserveAspectFit
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onEntered: {
+                        reboot.source = "images/system-reboot-hover.svg"
+                        var component = Qt.createComponent(
+                            "components/RebootToolTip.qml")
+                        if (component.status === Component.Ready) {
+                            var tooltip = component.createObject(reboot)
+                            tooltip.x = -100
+                            tooltip.y = 40
+                            tooltip.destroy(600)
+                        }
+                    }
+                    onExited: {
+                        reboot.source = "images/system-reboot.svg"
+                    }
+                    onClicked: {
+                        reboot.source = "images/system-reboot-pressed.svg"
+                        sddm.reboot()
+                    }
+                }
+            }
+        }
+    }
+    Row {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.rightMargin: 100
+        anchors.topMargin: 15
+
+        Item {
+            width: 22
+            height: 22
+
+            Image {
+                id: keyboardButton
+                height: 22
+                width: 22
+                source: inputPanel.keyboardActive ? "images/keyboard-pressed.svg"
+                                                  : (kbdMouse.containsMouse
+                                                     ? "images/keyboard-hover.svg"
+                                                     : "images/keyboard.svg")
+                fillMode: Image.PreserveAspectFit
+
+                MouseArea {
+                    id: kbdMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        inputPanel.keyboardActive = !inputPanel.keyboardActive
+                        if (inputPanel.keyboardActive) {
+                            // the keyboard follows the focused text field
+                            if (manualUser.visible && manualUser.text === "")
+                                manualUser.forceActiveFocus()
+                            else if (password.visible)
+                                password.forceActiveFocus()
+                            Qt.inputMethod.show()
+                        } else {
+                            Qt.inputMethod.hide()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Row {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.rightMargin: 122
+        anchors.topMargin: 15
+
+        ComboBox {
+            id: session
+            height: 22
+            width: 150
+            model: sessionModel
+            textRole: "name"
+            displayText: ""
+            currentIndex: sessionModel.lastIndex
+            background: Rectangle {
+                implicitWidth: parent.width
+                implicitHeight: parent.height
+                color: "transparent"
+            }
 
 
-  FontLoader {
-    id: opensans_cond_light
-    source: "fonts/OpenSans_CondLight.ttf"
-  }
+            delegate: MenuItem {
+                id: menuitems
+                width: slistview.width * 4
+                text: session.textRole ? (Array.isArray(session.model) ? modelData[session.textRole] : model[session.textRole]) : modelData
+                highlighted: session.highlightedIndex === index
+                hoverEnabled: session.hoverEnabled
+                onClicked: {
+                    session.currentIndex = index
+                    slistview.currentIndex = index
+                    session.popup.close()
+                }
+            }
+            indicator: Rectangle{
+                anchors.right: parent.right
+                anchors.rightMargin: 9
+                height: parent.height
+                width: 22
+                color: "transparent"
+                Image{
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    height: width
+                    fillMode: Image.PreserveAspectFit
+                    source: "images/conf.svg"
+                }
+            }
+            popup: Popup {
+                width: parent.width
+                height: parent.height * menuitems.count
+                implicitHeight: slistview.contentHeight
+                margins: 0
+                contentItem: ListView {
+                    id: slistview
+                    clip: true
+                    anchors.fill: parent
+                    model: session.model
+                    spacing: 0
+                    highlightFollowsCurrentItem: true
+                    currentIndex: session.highlightedIndex
+                    delegate: session.delegate
+                }
+            }
 
-  Repeater {
-    model: screenModel
+        }
+    }
 
+    BrightnessContrast {
+        anchors.fill: parent
+        source: wallpaper
+        brightness: 0
+        contrast: 0.3
+        layer.enabled: true
+        layer.effect: OpacityMask {
+            maskSource: identclock
+        }
+    }
+    FastBlur {
+        anchors.fill: parent
+        source: wallpaper
+        radius: 32
+        visible: listuser.visible ? false : true
+        layer.enabled: true
+        layer.effect: OpacityMask {
+            maskSource: maskOfBlur
+        }
+    }
+    Rectangle {
+        id: maskOfBlur
+        anchors.fill: parent
+        color: "transparent"
+        visible: false
+        Rectangle {
+            implicitWidth: 250
+            implicitHeight: 32
+            color: "#000"
+            radius: 15
+            anchors.bottom:  parent.bottom
+            anchors.bottomMargin: baseOfUserDialog.anchors.bottomMargin + password.anchors.bottomMargin
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+    }
     Item {
-      Rectangle {
-        x       : geometry.x
-        y       : geometry.y
-        width   : geometry.width
-        height  : geometry.height
-        color   : defaultBg
-      }
-    }
-  }
-
-  //
-  // Status bar on top
-  //
-  Rectangle {
-    x       : 0
-    y       : 0
-    width   : parent.width
-    height  : spUnit
-
-    color   : primaryDark
-
-    Row {
-      x       : (parent.width  / 2) + padAsymH
-      y       : padAsymV
-      width   : ((parent.width  / 2) - (padAsymH * 2))
-      height  : (parent.height - (padAsymV * 2))
-
-      spacing : padAsymH
-
-      layoutDirection : Qt.RightToLeft
-
-      //
-      // Current date & time
-      //
-      SpClock {
-        height  : parent.height
-
-        tColor  : normalText
-
-        tFont.family    : opensans_cond_light.name
-        tFont.pixelSize : spFontNormal
-      }
-    }
-  }
-
-
-  //
-  // Header
-  //
-  Rectangle {
-    x       : 0
-    y       : spUnit
-    width   : parent.width
-    height  : spUnit
-
-    color   : primaryShade
-
-    Row {
-      x       : padAsymH
-      y       : padAsymV
-      width   : (parent.width  - (padAsymH * 2))
-      height  : (parent.height - (padAsymV * 2))
-
-      //
-      // Welcome Text
-      //
-      Text {
-        id      : maya_welcome
-
-        width   : parent.width
-        height  : parent.height
-
-        text    : textConstants.welcomeText.arg(sddm.hostName)
-        color   : normalText
-
-        font.family         : opensans_cond_light.name
-        font.pixelSize      : spFontNormal
-
-        fontSizeMode        : Text.VerticalFit
-        horizontalAlignment : Text.AlignLeft
-        verticalAlignment   : Text.AlignVCenter
-      }
-    }
-  }
-
-  //
-  // Toolbar
-  //
-  Rectangle {
-    x       : 0
-    y       : (spUnit * 2)
-    width   : parent.width
-    height  : spUnit
-
-    color   : primaryShade
-
-    Row {
-      x       : (parent.width  / 2) + padAsymH
-      y       : padAsymV
-      width   : ((parent.width  / 2) - (padAsymH * 2))
-      height  : (parent.height - (padAsymV * 2))
-
-      spacing : padAsymH
-
-      layoutDirection : Qt.RightToLeft
-
-      //
-      // Layout selection
-      //
-      LayoutBox {
-        id      : maya_layout
-
-        width   : spUnit * 2
-        height  : parent.height
-
-        color       : primaryHue1
-        borderColor : primaryHue3
-        focusColor  : accentLight
-        hoverColor  : accentHue2
-        textColor   : normalText
-        menuColor   : primaryHue1
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontNormal
-
-        arrowIcon: "images/ic_arrow_drop_down_white_24px.svg"
-        arrowColor: primaryHue3
-
-        KeyNavigation.tab     : maya_username
-        KeyNavigation.backtab : maya_session
-      }
-
-      Text {
-        height  : parent.height
-
-        text    : textConstants.layout
-
-        color   : normalText
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontNormal
-
-        horizontalAlignment : Text.AlignLeft
-        verticalAlignment   : Text.AlignVCenter
-      }
-
-      //
-      // Session selection
-      //
-      ComboBox {
-        id      : maya_session
-
-        model   : sessionModel
-        index   : sessionModel.lastIndex
-
-        width   : spUnit * 3
-        height  : parent.height
-
-        color       : primaryHue1
-        borderColor : primaryHue3
-        focusColor  : accentLight
-        hoverColor  : accentHue2
-        textColor   : normalText
-        menuColor   : primaryHue1
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontNormal
-
-        arrowIcon: "images/ic_arrow_drop_down_white_24px.svg"
-        arrowColor: primaryHue3
-
-        KeyNavigation.tab     : maya_layout
-        KeyNavigation.backtab : maya_shutdown
-      }
-
-      Text {
-        height  : parent.height
-
-        text    : textConstants.session
-
-        color   : normalText
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontNormal
-
-        horizontalAlignment : Text.AlignLeft
-        verticalAlignment   : Text.AlignVCenter
-      }
-    }
-  }
-
-  //
-  // Footer
-  //
-  Rectangle {
-    x       : 0
-    y       : (parent.height - spUnit)
-    width   : parent.width
-    height  : spUnit
-
-    color   : primaryHue3
-
-    Row {
-      x : padAsymH;
-      y : padAsymV;
-
-      width   : (parent.width  - (padAsymH * 2))
-      height  : (parent.height - (padAsymV * 2))
-
-      spacing: padAsymH
-
-      layoutDirection : Qt.RightToLeft
-
-      //
-      // Shutdown button
-      //
-      SpButton {
-        id      : maya_shutdown
-
-        height  : parent.height
-        width   : (spUnit * 4)
-
-        font.family : opensans_cond_light.name
-
-        label       : textConstants.shutdown
-        labelColor  : normalText
-
-        icon        : "images/ic_power_settings_new_white_24px.svg"
-        iconColor   : accentShade
-
-        hoverIconColor  : powerColor
-        hoverLabelColor : accentShade
-
-        KeyNavigation.tab     : maya_session
-        KeyNavigation.backtab : maya_reboot
-
-        onClicked: sddm.powerOff()
-      }
-
-      //
-      // Reboot button
-      //
-      SpButton {
-        id      : maya_reboot
-
-        height  : parent.height
-        width   : (spUnit * 4)
-
-        font.family : opensans_cond_light.name
-
-        label       : textConstants.reboot
-        labelColor  : normalText
-
-        icon        : "images/ic_refresh_white_24px.svg"
-        iconColor   : accentLight
-
-        hoverIconColor  : rebootColor
-        hoverLabelColor : accentShade
-
-        KeyNavigation.tab     : maya_shutdown
-        KeyNavigation.backtab : maya_login
-
-        onClicked: sddm.reboot()
-      }
-    }
-  }
-
-  //
-  // Login container
-  //
-  Rectangle {
-    x       : (parent.width  - (6 * spUnit)) / 2
-    y       : (parent.height - (5 * spUnit)) / 2
-    width   : (6 * spUnit)
-    height  : (5 * spUnit)
-
-    color   : primaryHue3
-
-    Row {
-      x       : padSym
-      y       : padSym
-      width   : (parent.width - (padSym * 2))
-      height  : (spUnit - (padSym * 2))
-
-      Text {
-        width   : parent.width
-        height  : parent.height
-
-        text    : textConstants.userName
-        color   : accentLight
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontSmall
-
-        horizontalAlignment : Text.AlignLeft
-        verticalAlignment   : Text.AlignBottom
-      }
-    }
-
-    Row {
-      x       : padSym
-      y       : spUnit + padSym
-      width   : (parent.width - (padSym * 2))
-      height  : (spUnit - (padSym * 2))
-
-      TextBox {
-        id      : maya_username
-
-        width   : parent.width
-        height  : parent.height
-
-        color       : primaryHue1
-        borderColor : primaryDark
-        focusColor  : accentShade
-        hoverColor  : accentLight
-        textColor   : normalText
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontSmall
-
-        KeyNavigation.tab     : maya_password
-        KeyNavigation.backtab : maya_layout
-      }
-    }
-
-    Row {
-      x       : padSym
-      y       : (2 * spUnit) + padSym
-      width   : (parent.width - (padSym * 2))
-      height  : (spUnit - (padSym * 2))
-
-      Text {
-        width   : parent.width
-        height  : parent.height
-
-        text    : textConstants.password
-        color   : accentLight
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontSmall
-
-        horizontalAlignment : Text.AlignLeft
-        verticalAlignment   : Text.AlignBottom
-      }
-    }
-
-    Row {
-      x       : padSym
-      y       : (3 * spUnit) + padSym
-      width   : (parent.width - (padSym * 2))
-      height  : (spUnit - (padSym * 2))
-
-      PasswordBox {
-        id      : maya_password
-
-        width   : parent.width
-        height  : parent.height
-
-        color       : primaryHue1
-        borderColor : primaryDark
-        focusColor  : accentShade
-        hoverColor  : accentLight
-        textColor   : normalText
-
-        image       : "images/ic_warning_white_24px.svg"
-
-        tooltipEnabled  : true
-        tooltipText     : textConstants.capslockWarning
-        tooltipFG       : normalText
-        tooltipBG       : primaryHue3
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontNormal
-
-        KeyNavigation.tab     : maya_login
-        KeyNavigation.backtab : maya_username
-
-        Keys.onPressed: {
-          if ((event.key === Qt.Key_Return) || (event.key === Qt.Key_Enter)) {
-            maya_root.tryLogin()
-
-            event.accepted = true;
-          }
+        id: identclock
+        width: parent.width
+        height: parent.height
+        opacity: 0.8
+        Rectangle {
+            height: 300
+            width: 400
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: "transparent"
+            Clock {
+                id: clock
+                visible: true
+                anchors.topMargin: 100
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+            }
         }
-      }
     }
 
-    Row {
-      x       : padSym
-      y       : (4 * spUnit) + padSym
-      width   : (parent.width - (padSym * 2))
-      height  : (spUnit - (padSym * 2))
-
-      Button {
-        id      : maya_login
-
-        width   : parent.width
-        height  : parent.height
-
-        text    : textConstants.login
-
-        color         : primaryDark
-        textColor     : normalText
-
-        borderColor   : primaryHue1
-
-        pressedColor  : accentLight
-        activeColor   : accentShade
-
-        font.family     : opensans_cond_light.name
-        font.pixelSize  : spFontNormal
-        font.weight     : Font.DemiBold
-
-        KeyNavigation.tab     : maya_reboot
-        KeyNavigation.backtab : maya_layout
-
-        onClicked: maya_root.tryLogin()
-
-        Keys.onPressed: {
-          if ((event.key === Qt.Key_Return) || (event.key === Qt.Key_Enter)) {
-            maya_root.tryLogin()
-
-            event.accepted = true;
-          }
-        }
-      }
-    }
-  }
-
-  //
-  // Busy animation (just above footer)
-  //
-  Rectangle {
-    id      : maya_busy
-
-    x       : (parent.width  - (6 * spUnit)) / 2
-    y       : (parent.height - (1.5 * spUnit))
-    width   : (6 * spUnit)
-    height  : (spUnit / 4)
-
-    visible : false
-
-    color   : "transparent"
-
-    border.color  : accentHue1
-    border.width  : 1
 
     Rectangle {
-      id      : maya_busy_indicator
+        id: baseOfUserDialog
+        width: listuser.visible ? listuser.width > password.width ? listuser.width + (listuser.spacing*userModel.count) : password.width : password.width
+        height: listuser.visible ? listuser.height + password.height + greetingLabel.height + password.height + password.anchors.bottomMargin + 10 : sizeAvatar + password.height + greetingLabel.height + password.height + password.anchors.bottomMargin +10
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        // lift the login form above the on-screen keyboard when it is open
+        anchors.bottomMargin: 40 + (inputPanel.shown ? inputPanel.height : 0)
+        Behavior on anchors.bottomMargin {
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
+        color: "transparent"
 
-      x       : 0
-      y       : 0
-      width   : (spUnit / 4)
-      height  : parent.height
+        Column {
+            id: sectionLogin
+            height: parent.height
+            width: parent.width
 
-      color   : accentHue3
+            ListView {
+                id: listuser
+                width: implicitCustomWidth + sizeAvatar*.9
+                height: ((sizeAvatar*.9) + 10)*userModel.count
+                model: jUser
+                verticalLayoutDirection: ListView.BottomToTop
+                anchors.left: parent.left
+                anchors.leftMargin: ((parent.width/2) - (sizeAvatar*.9)/2)+5
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: usernametext.top
+                anchors.bottomMargin: -10
+                visible: false
+                currentIndex: userModel.lastIndex
+
+                delegate: Item {
+                    height: sizeAvatar*.9
+                    width: nameList.implicitWidth + height + contentFullUser.spacing
+                    Row {
+                        id: contentFullUser
+                        height: parent.height - 10
+                        width: parent.width + spacing
+                        spacing: 10
+                        anchors.top: parent.top
+                        Rectangle {
+                            id: maskByList
+                            width: sizeAvatar*.9
+                            height: width
+                            color: "black"
+                            visible: false
+                            radius: height/2
+                        }
+                        Image {
+                            id: avaList
+                            source: model.icon
+                            height: parent.height
+                            width: height
+                            fillMode: Image.PreserveAspectFit
+                            layer.enabled: true
+                            layer.effect: OpacityMask {
+                                maskSource: maskByList
+                            }
+
+                        }
+
+                        Text {
+                            id: nameList
+                            text: model.name
+                            color: "white"  // Asegúrate de que el texto sea visible sobre el fondo
+                            font.bold: true
+                            visible: !startAnimationNames
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    Rectangle {
+                        id: resalt
+                        color: "#ff991c"
+                        width: parent.width/3.5
+                        height: width
+                        radius: width/2
+                        border.color: "white"
+                        border.width: width/14
+                        visible: model.name === userModel.currentText
+                        anchors.bottom: parent.bottom
+                        anchors.right: parent.right
+                        Image {
+                            id: palomita
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width*.6
+                            height: width
+                            source: "images/palomita.svg"
+                            sourceSize: Qt.size(width, width)
+                            fillMode: Image.PreserveAspectFit
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    MouseArea {
+                        anchors.fill: contentFullUser
+                        onClicked: {
+                            listuser.visible = !listuser.visible
+                            ava.visible = !ava.visible
+                            users.lastNameUser = nameList.text
+                        }
+                    }
+                    Component.onCompleted: {
+                        implicitCustomWidth = nameList.implicitWidth > implicitCustomWidth ? nameList.implicitWidth : implicitCustomWidth
+                    }
+                }
+                Behavior on opacity {  // Comportamiento animado para la opacidad
+                    NumberAnimation {
+                        duration: 300
+                        easing.type: Easing.InOutQuad
+                    }
+                }
+
+                states: [
+                    State {
+                        name: "visible"
+                        when: listuser.visible
+                        PropertyChanges {
+                            target: listuser
+                            opacity: 1
+                        }
+                    },
+                    State {
+                        name: "hidden"
+                        when: !listuser.visible
+                        PropertyChanges {
+                            target: listuser
+                            opacity: 0
+                        }
+                    }
+                ]
+
+                transitions: [
+                    Transition {
+                        from: "hidden"
+                        to: "visible"
+                        NumberAnimation {
+                            target: listuser
+                            property: "y"
+                            duration: 300
+                            easing.type: Easing.OutBounce
+                            from: listuser.y + 20
+                            to: listuser.y
+                        }
+                    },
+                    Transition {
+                        from: "visible"
+                        to: "hidden"
+                        NumberAnimation {
+                            target: listuser
+                            property: "y"
+                            duration: 300
+                            easing.type: Easing.InQuad
+                            from: listuser.y
+                            to: listuser.y + 20
+                        }
+                    }
+                ]
+
+
+            }
+
+
+
+            Rectangle {
+                id: mask
+                width: sizeAvatar
+                height: sizeAvatar
+                radius: sizeAvatar/2
+                visible: false
+            }
+
+            DropShadow {
+                anchors.fill: ava
+                width: mask.width - 4
+                height: mask.height - 4
+                anchors.horizontalCenter: parent.horizontalCenter
+                horizontalOffset: 0
+                verticalOffset: 0
+                radius: 15.0
+                samples: 15
+                color: "#50000000"
+                source: mask
+                visible: listuser.visible ? false : true
+            }
+            Image {
+                id: ava
+                width: sizeAvatar
+                height: sizeAvatar
+                visible: true
+                fillMode: Image.PreserveAspectCrop
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                layer.enabled: true
+                layer.effect: OpacityMask {
+                    maskSource: mask
+                }
+                source: users.lastUrlAvatar
+                MouseArea {
+                    anchors.fill: ava
+                    onClicked: {
+                        // never open an empty list: it hides the password field
+                        if (jUser.count > 0) {
+                            listuser.visible = true
+                            ava.visible = false
+                        }
+                    }
+                }
+
+            }
+
+            Text {
+                id: usernametext
+                text: users.finalLoginUserName
+                anchors.top: parent.top
+                anchors.topMargin: listuser.visible ? listuser.height + 20 : sizeAvatar + 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                font.pixelSize: 20
+                font.family: fontbold.name
+                font.capitalization: Font.Capitalize
+                font.weight: Font.DemiBold
+                visible: listuser.visible ? false : true
+                color: "white"
+                layer.enabled: true
+                layer.effect: DropShadow {
+                    horizontalOffset: 0
+                    verticalOffset: 1
+                    radius: 3
+                    samples: 8
+                    color: "#33000000"
+                }
+            }
+            Text  {
+                id: demo
+                //font.pixelSize:
+                text: textConstants.password
+                font.weight: Font.DemiBold
+                visible: false
+            }
+            TextField {
+                id: manualUser
+                anchors.bottom: password.top
+                anchors.bottomMargin: 8
+                anchors.horizontalCenter: parent.horizontalCenter
+                height: 32
+                width: 250
+                color: "#fff"
+                placeholderTextColor: "#66FFFFFF"
+                placeholderText: textConstants.userName
+                font.weight: Font.DemiBold
+                leftPadding: 14
+                rightPadding: 14
+                // only shown if SDDM gave us no users at all
+                visible: userModel.count === 0
+                onAccepted: password.forceActiveFocus()
+                background: Rectangle {
+                    color: "#fff"
+                    opacity: 0.18
+                    radius: 8
+                    border.color: "#66FFFFFF"
+                    border.width: 1
+                }
+            }
+            TextField {
+                id: password
+
+                property var vtext: TextInput.Password
+
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: greetingLabel.height*2
+                height: 32
+                width: 250
+                color: "#fff"
+                placeholderTextColor: "#66FFFFFF"
+                echoMode: TextInput.Password
+                focus: true
+                font.weight: Font.DemiBold
+                placeholderText: textConstants.password
+                leftPadding: 14
+                rightPadding: 14
+                horizontalAlignment: TextInput.AlignLeft
+                visible: listuser.visible ? false : true
+
+
+                onAccepted: sddm.login(loginName(), password.text,
+                                       session.currentIndex)
+
+                background: Rectangle {
+
+                    implicitWidth: parent.width
+                    implicitHeight: parent.height
+                    color: "#fff"
+                    opacity: 0.18
+                    radius: 8
+                    border.color: "#66FFFFFF"
+                    border.width: 1
+                }
+
+                Image {
+                    id: caps
+                    width: 24
+                    height: 24
+                    opacity: 0
+                    state: keyboard.capsLock ? "activated" : ""
+                    anchors.right: password.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.rightMargin: 10
+                    fillMode: Image.PreserveAspectFit
+                    source: "images/capslock.svg"
+                    sourceSize.width: 24
+                    sourceSize.height: 24
+
+                    states: [
+                        State {
+                            name: "activated"
+                            PropertyChanges {
+                                target: caps
+                                opacity: 1
+                            }
+                        },
+                        State {
+                            name: ""
+                            PropertyChanges {
+                                target: caps
+                                opacity: 0
+                            }
+                        }
+                    ]
+
+                    transitions: [
+                        Transition {
+                            to: "activated"
+                            NumberAnimation {
+                                target: caps
+                                property: "opacity"
+                                from: 0
+                                to: 1
+                                duration: imageFadeIn
+                            }
+                        },
+
+                        Transition {
+                            to: ""
+                            NumberAnimation {
+                                target: caps
+                                property: "opacity"
+                                from: 1
+                                to: 0
+                                duration: imageFadeOut
+                            }
+                        }
+                    ]
+                }
+            }
+            Label {
+                id: greetingLabel
+                text: textConstants.promptPassword
+                color: "#fff"
+                style: Text.Normal
+                visible: listuser.visible ? false : true
+
+                styleColor: "transparent"
+                font.pointSize:8
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                font.bold: true
+            }
+        }
+
     }
-
-    SequentialAnimation {
-      id      : maya_busy_anim
-
-      running : false
-      loops   : Animation.Infinite
-
-      NumberAnimation {
-        target    : maya_busy_indicator
-        property  : "x"
-        from      : 0
-        to        : (6 * spUnit) - (spUnit / 4)
-        duration  : 2500
-      }
-
-      NumberAnimation {
-        target    : maya_busy_indicator
-        property  : "x"
-        to        : 0
-        duration  : 2500
-      }
-    }
-  }
-
-  //
-  // Prompt container
-  //
-  Rectangle {
-    id      : prompt_bg
-
-    x       : (parent.width / 4)
-    y       : (parent.height - (3 * spUnit))
-    width   : (parent.width / 2)
-    height  : spUnit
-
-    color   : "transparent"
-
-    Text {
-      id      : prompt_txt
-
-      x       : padSym
-      y       : padSym
-      width   : (parent.width  - (padSym * 2))
-      height  : (parent.height - (padSym * 2))
-
-      color   : normalText
-
-      text    : textConstants.prompt
-
-      font.pixelSize  : spFontNormal
-
-      horizontalAlignment : Text.AlignHCenter
-      verticalAlignment   : Text.AlignVCenter
-    }
-
-    SequentialAnimation on color {
-      id      : anim_success
-      running : false
-
-      ColorAnimation {
-        from: "transparent"
-        to: successText
-        duration: 250
-      }
-    }
-
-    SequentialAnimation on color {
-      id      : anim_failure
-      running : false
-
-      ColorAnimation {
-        from: "transparent"
-        to: failureText
-        duration: 250
-      }
-
-      PauseAnimation {
-        duration: 500
-      }
-
-      ColorAnimation {
-        from: failureText
-        to: "transparent"
-        duration: 500
-      }
-
-      onStopped: {
-        maya_password.text  = ""
-        prompt_txt.text     = textConstants.prompt
-      }
-    }
-  }
-
-
-  Component.onCompleted: {
-    if (maya_username.text === "")
-      maya_username.focus = true
-    else
-      maya_password.focus = true
-  }
 }
+

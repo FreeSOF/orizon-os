@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 #  ORIZON - Apply KDE Plasma Theme
-#  Usage: orizon --theme [light|dark]
+#  Usage: orizon --theme [light|twilight|dark]
 # ============================================================
 
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'
@@ -11,9 +11,10 @@ RED='\033[0;31m'; NC='\033[0m'; BOLD='\033[1m'
 SCRIPT_PATH=$(readlink -f "${BASH_SOURCE[0]}")
 ORIZON_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
-ORIZON_LOGO="$ORIZON_DIR/branding/orizon-logo.png"
+ORIZON_LOGO="/usr/share/pixmaps/orizon/orizon-logo.png"
 ORIZON_LINK="https://freesof.ru/orizon-os"
 WALLPAPER_PATH="/usr/share/backgrounds/orizon/orizon-default.png"
+LAKE_WALLPAPER_PATH="/usr/share/backgrounds/orizon/lake.png"
 
 # Application icons
 ORIZON_SETTINGS_ICON="$ORIZON_DIR/branding/orizon-settings.png"
@@ -107,15 +108,63 @@ if [[ "$MODE" == "dark" ]]; then
     echo -e "  Mode: ${BOLD}Dark theme (Orizon-Dark)${NC}\n"
     COLOR_SCHEME="Orizon-Dark"
     LOOK_AND_FEEL="com.orizon.orizon-dark"
-    ICON_THEME="Papirus-Dark"
+    ICON_THEME="ePapirus-Dark"
+    USE_KVANTUM=1
+    PLASMA_STYLE="breeze-dark"
+    PANEL_ICON="/usr/share/pixmaps/orizon/orizon-logo-mono.png"
+elif [[ "$MODE" == "twilight" ]]; then
+    echo -e "  Mode: ${BOLD}Twilight theme (Orizon-Light + dark panel)${NC}\n"
+    COLOR_SCHEME="Orizon-Light"
+    LOOK_AND_FEEL="com.orizon.orizon-twilight"
+    ICON_THEME="ePapirus"
+    USE_KVANTUM=1
+    PLASMA_STYLE="breeze-dark"
+    PANEL_ICON="/usr/share/pixmaps/orizon/orizon-logo-mono.png"
 else
+    MODE="light"
     echo -e "  Mode: ${BOLD}Light theme (Orizon-Light)${NC}\n"
     COLOR_SCHEME="Orizon-Light"
-    LOOK_AND_FEEL="org.kde.breeze.desktop"
-    ICON_THEME="Papirus"
+    LOOK_AND_FEEL="com.orizon.orizon-light"
+    ICON_THEME="ePapirus"
+    USE_KVANTUM=1
+    KVANTUM_THEME="Orizon-Light"
+    PLASMA_STYLE="default"
+    PANEL_ICON="/usr/share/pixmaps/orizon/orizon-logo-black.png"
 fi
 
-# ── 1. Color scheme ───────────────────────────────────────────
+# Light theme needs a black Start-button logo; build it from the mono/main
+# logo if the installer has not already (alpha kept, colour forced to black).
+if [ "$PANEL_ICON" = "/usr/share/pixmaps/orizon/orizon-logo-black.png" ] && [ ! -f "$PANEL_ICON" ]; then
+    for _src in /usr/share/pixmaps/orizon/orizon-logo-mono.png \
+                /usr/share/pixmaps/orizon/orizon-logo-48.png \
+                /usr/share/pixmaps/orizon/orizon-logo.png; do
+        [ -f "$_src" ] || continue
+        mkdir -p "$HOME/.local/share/orizon"
+        BLACK_LOGO="$HOME/.local/share/orizon/orizon-logo-black.png"
+        if python3 - "$_src" "$BLACK_LOGO" 2>/dev/null << 'PYEOF'
+import sys
+from PIL import Image
+im = Image.open(sys.argv[1]).convert("RGBA")
+r, g, b, a = im.split()
+z = r.point(lambda _: 0)
+Image.merge("RGBA", (z, z, z, a)).save(sys.argv[2])
+PYEOF
+        then PANEL_ICON="$BLACK_LOGO"
+        elif convert "$_src" -channel RGB -evaluate set 0 +channel "$BLACK_LOGO" 2>/dev/null; then PANEL_ICON="$BLACK_LOGO"
+        else PANEL_ICON="$_src"; fi
+        break
+    done
+fi
+
+# Refresh the service/desktop cache before applying anything.
+kbuildsycoca5 --noincremental 2>/dev/null || true
+
+# ── 1. Color scheme ─────────────────────────────────────────────
+# We no longer install com.orizon.orizon-dark/light as a Global Theme
+# package (it never worked from System Settings' Apply button and only
+# confused people by showing up as a broken option there). Instead this
+# script applies the color scheme, icons, and wallpaper directly — this
+# is exactly what "orizon --theme dark/light" is for.
 echo -e "${CYAN}[1/8]${NC} Color scheme $COLOR_SCHEME..."
 mkdir -p "$HOME/.local/share/color-schemes"
 if [ -f "$ORIZON_DIR/kde/color-scheme/$COLOR_SCHEME.colors" ]; then
@@ -123,6 +172,34 @@ if [ -f "$ORIZON_DIR/kde/color-scheme/$COLOR_SCHEME.colors" ]; then
 fi
 plasma-apply-colorscheme "$COLOR_SCHEME" 2>/dev/null
 kwriteconfig5 --file kdeglobals --group KDE --key LookAndFeelPackage "$LOOK_AND_FEEL"
+
+# Windows 11-style rounded corners — Breeze decoration corner radius
+kwriteconfig5 --file breezerc --group Windeco --key CornerRadius 6 2>/dev/null
+kwriteconfig5 --file breezerc --group Windeco --key DrawBorderOnMaximizedWindows false 2>/dev/null
+
+# Breeze window decoration with large buttons
+kwriteconfig5 --file kwinrc --group org.kde.kdecoration2 --key library "org.kde.kwin.style.breeze"
+kwriteconfig5 --file kwinrc --group org.kde.kdecoration2 --key theme ""
+kwriteconfig5 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnLeft "MF"
+kwriteconfig5 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnRight "IAX"
+kwriteconfig5 --file breezerc --group Windeco --key ButtonSize 3
+
+qdbus org.kde.KWin /KWin reconfigure 2>/dev/null || true
+# Plasma Style (desktoptheme) — this is what actually colors the panel
+# and Kickoff chrome/background, separate from Kvantum (which only
+# styles buttons/widgets inside apps). Without this the panel just
+# inherits whatever the system's stock default happens to be.
+plasma-apply-desktoptheme "$PLASMA_STYLE" 2>/dev/null
+kwriteconfig5 --file plasmarc --group Theme --key name "$PLASMA_STYLE"
+# Force the panel to re-read the desktoptheme immediately via DBus,
+# without waiting for a plasmashell restart — without this, the panel
+# keeps its previous chrome color even though plasmarc is already updated.
+qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.refreshCurrentShell 2>/dev/null || true
+# Tell orizon-theme-watcher.sh this theme is already applied, so it doesn't
+# see our own kdeglobals write and redundantly run this whole script again
+# (it's only meant to react to a change made from System Settings).
+mkdir -p "$HOME/.config"
+echo "$LOOK_AND_FEEL" > "$HOME/.config/orizon-theme-state" 2>/dev/null || true
 echo -e "${GREEN}  ✓ Done${NC}"
 
 # ── 2. Icons and fonts ────────────────────────────────────────
@@ -163,14 +240,30 @@ echo -e "${CYAN}[5/8]${NC} ORIZON application icons..."
 set_icon "$ORIZON_EXPLORER_ICON" \
     org.gnome.Nautilus.desktop \
     org.kde.dolphin.desktop
-# Rename to "Files"
+# Rename to "Files" — also strip localized Name[xx]=, otherwise KDE prefers
+# the translated upstream name over our plain Name= under non-English locales
 for desktop in org.gnome.Nautilus.desktop org.kde.dolphin.desktop; do
     dst="$HOME/.local/share/applications/$desktop"
-    [ -f "$dst" ] && sed -i "s|^Name=.*|Name=Files|g" "$dst"
+    if [ -f "$dst" ]; then
+        sed -i "/^Name\[/d" "$dst"
+        sed -i "s|^Name=.*|Name=Files|g" "$dst"
+    fi
 done
 
-# System Settings
-set_icon "$ORIZON_SETTINGS_ICON"  systemsettings.desktop
+# System Settings — check all known desktop-file IDs (varies by distro/version),
+# rename and strip localized Name[xx]= for the same reason as above (this is
+# what was showing "Параметры системы KDE" instead of our branding)
+for desktop in systemsettings.desktop systemsettings5.desktop org.kde.systemsettings.desktop; do
+    set_icon "$ORIZON_SETTINGS_ICON" "$desktop"
+    dst="$HOME/.local/share/applications/$desktop"
+    if [ -f "$dst" ]; then
+        sed -i "/^Name\[/d" "$dst"
+        sed -i "s|^Name=.*|Name=Параметры системы|g" "$dst"
+        sed -i "/^GenericName\[/d" "$dst"
+        # older installers added a bogus --mode flag that systemsettings5 rejects
+        sed -i -E 's/ --mode systemsettings_sidebar_mode//g' "$dst"
+    fi
+done
 
 # Applications
 set_icon "$ORIZON_ICON_KONSOLE"     org.kde.konsole.desktop  konsole.desktop
@@ -231,43 +324,27 @@ update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
 
 echo -e "${GREEN}  ✓ Done${NC}"
 
-# ── 6. Start button icon ──────────────────────────────────────
-echo -e "${CYAN}[6/8]${NC} Start button icon..."
-qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
-    function fixIcon(container) {
-        var ws = container.widgets;
-        for (var i = 0; i < ws.length; i++) {
-            var w = ws[i];
-            if (w.type === 'org.kde.plasma.kickoff' ||
-                w.type === 'org.kde.plasma.kicker' ||
-                w.type === 'org.kde.plasma.simplemenu') {
-                w.currentConfigGroup = ['General'];
-                w.writeConfig('icon', '$ORIZON_LOGO');
-            }
-        }
-    }
-    var allPanels = panels();
-    for (var i = 0; i < allPanels.length; i++) { fixIcon(allPanels[i]); }
-" 2>/dev/null
-echo -e "${GREEN}  ✓ Done${NC}"
-
 # ── 7. Lock screen ────────────────────────────────────────────
 echo -e "${CYAN}[7/8]${NC} Lock screen..."
+kwriteconfig5 --file kscreenlockerrc --group Greeter --key Theme "$LOOK_AND_FEEL" 2>/dev/null
 kwriteconfig5 --file kscreenlockerrc \
     --group "Greeter/Wallpaper/org.kde.image/General" \
-    --key Image "file://$WALLPAPER_PATH" 2>/dev/null
+    --key Image "file://$LAKE_WALLPAPER_PATH" 2>/dev/null
 echo -e "${GREEN}  ✓ Done${NC}"
 
 # ── 8. Kvantum + cache cleanup ───────────────────────────────
-echo -e "${CYAN}[8/8]${NC} Kvantum and cache cleanup..."
-if [ -d "$ORIZON_DIR/kde/kvantum/Orizon" ]; then
-    mkdir -p "$HOME/.config/Kvantum/Orizon"
-    cp -r "$ORIZON_DIR/kde/kvantum/Orizon/"* "$HOME/.config/Kvantum/Orizon/" 2>/dev/null
-    cat > "$HOME/.config/Kvantum/kvantum.kvconfig" << 'EOF'
+echo -e "${CYAN}[8/8]${NC} Widget style and cache cleanup..."
+KV_THEME="${KVANTUM_THEME:-Orizon}"
+if [ "$USE_KVANTUM" = "1" ] && [ -d "$ORIZON_DIR/kde/kvantum/$KV_THEME" ]; then
+    mkdir -p "$HOME/.config/Kvantum/$KV_THEME"
+    cp -r "$ORIZON_DIR/kde/kvantum/$KV_THEME/"* "$HOME/.config/Kvantum/$KV_THEME/" 2>/dev/null
+    cat > "$HOME/.config/Kvantum/kvantum.kvconfig" << EOF
 [General]
-theme=Orizon
+theme=$KV_THEME
 EOF
     kwriteconfig5 --file kdeglobals --group General --key widgetStyle "kvantum" 2>/dev/null
+else
+    kwriteconfig5 --file kdeglobals --group General --key widgetStyle "Breeze" 2>/dev/null
 fi
 
 # Reset KDE and hicolor icon cache
@@ -282,12 +359,174 @@ USER_HOME=$(eval echo "~$INSTALL_USER")
 BIN_DIR="$USER_HOME/.local/bin"
 sudo rm "$BIN_DIR/orizon-first-run.sh"
 
+# ── Rebuild panel widgets in the correct order ──────────────
+# Live-adding/swapping individual widgets doesn't fix ORDER on panels
+# that already existed before these features did — Plasma's scripting
+# API has no simple "move to position" call. So instead: wipe every
+# widget off each panel and re-add them in the exact order we want,
+# guaranteeing Kickoff is leftmost and Show Desktop is rightmost every
+# time, regardless of whatever order was there before.
+qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+    var allPanels = panels();
+    for (var i = 0; i < allPanels.length; i++) {
+        var p = allPanels[i];
+        var ws = p.widgets();
+        for (var j = 0; j < ws.length; j++) {
+            ws[j].remove();
+        }
+        p.addWidget('org.kde.plasma.kickoff');
+        p.addWidget('org.kde.plasma.marginsseparator');
+        var tasks = p.addWidget('org.kde.plasma.icontasks');
+        tasks.currentConfigGroup = ['Configuration', 'General'];
+        tasks.writeConfig('showOnlyCurrentDesktop', true);
+        tasks.writeConfig('groupingStrategy', 1);
+        p.addWidget('org.kde.plasma.marginsseparator');
+        p.addWidget('org.kde.plasma.systemtray');
+        var clock = p.addWidget('org.kde.plasma.digitalclock');
+        clock.currentConfigGroup = ['Configuration', 'Appearance'];
+        clock.writeConfig('showDate', true);
+        clock.writeConfig('dateFormat', 'shortDate');
+        p.addWidget('org.kde.plasma.showdesktop');
+    }
+" 2>/dev/null || true
+
 # ── Restart Plasma ────────────────────────────────────────────
+# Quit plasmashell BEFORE touching the panel icon, not after. The
+# previous version wrote the Start-button icon via a live qdbus
+# evaluateScript call and only then restarted plasmashell — but
+# plasmashell can flush its own in-memory applet state back to
+# plasma-org.kde.plasma.desktop-appletsrc when it quits, which raced
+# with (and silently undid) the icon we'd just written. Killing it
+# first and editing the config file directly while nothing is running
+# to overwrite it is what actually sticks.
 echo -e "\n  Restarting Plasma..."
 kquitapp5 plasmashell >/dev/null 2>&1 || kquitapp6 plasmashell >/dev/null 2>&1
 sleep 2
+
+# ── 6. Start button icon ──────────────────────────────────────
+echo -e "${CYAN}[6/8]${NC} Start button icon..."
+PLASMA_CFG="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+if [ -f "$PLASMA_CFG" ]; then
+    python3 - "$PLASMA_CFG" "$PANEL_ICON" << 'PYEOF'
+import re
+import sys
+
+path, icon = sys.argv[1], sys.argv[2]
+
+with open(path) as f:
+    lines = f.readlines()
+
+# Find every top-level Applet section, e.g. "[Containments][2][Applets][36]",
+# and check its plugin= line for the Start-button widget (the plugin id
+# varies: Kickoff, Kicker, or SimpleMenu depending on distro/version).
+# Matching on plugin= is what actually identifies the right applet —
+# section headers are just numeric IDs, they never contain the word
+# "kickoff" themselves.
+applet_re = re.compile(r'^\[Containments\]\[\d+\]\[Applets\]\[\d+\]$')
+targets = []
+i = 0
+while i < len(lines):
+    line = lines[i].rstrip('\n')
+    if applet_re.match(line):
+        prefix = line
+        j = i + 1
+        plugin = None
+        while j < len(lines) and not lines[j].startswith('['):
+            m = re.match(r'^plugin=(.*)$', lines[j].rstrip('\n'))
+            if m:
+                plugin = m.group(1)
+            j += 1
+        if plugin in (
+            'org.kde.plasma.kickoff',
+            'org.kde.plasma.kicker',
+            'org.kde.plasma.simplemenu',
+        ):
+            targets.append(prefix)
+        i = j
+    else:
+        i += 1
+
+for prefix in targets:
+    target_header = f'{prefix}[Configuration][General]\n'
+    idx = lines.index(target_header) if target_header in lines else None
+
+    if idx is not None:
+        j = idx + 1
+        replaced = False
+        while j < len(lines) and not lines[j].startswith('['):
+            if lines[j].startswith('icon='):
+                lines[j] = f'icon={icon}\n'
+                replaced = True
+                break
+            j += 1
+        if not replaced:
+            lines.insert(idx + 1, f'icon={icon}\n')
+    else:
+        lines.append(target_header)
+        lines.append(f'icon={icon}\n')
+
+# Default panel height: 44. Panel containments are top-level
+# "[Containments][N]" sections (no [Applets] in the path) whose own
+# plugin= line is org.kde.panel — the height itself lives in that same
+# containment's own "[Containments][N][General]" group.
+panel_re = re.compile(r'^\[Containments\]\[\d+\]$')
+panel_targets = []
+i = 0
+while i < len(lines):
+    line = lines[i].rstrip('\n')
+    if panel_re.match(line):
+        prefix = line
+        j = i + 1
+        plugin = None
+        while j < len(lines) and not lines[j].startswith('['):
+            m = re.match(r'^plugin=(.*)$', lines[j].rstrip('\n'))
+            if m:
+                plugin = m.group(1)
+            j += 1
+        if plugin == 'org.kde.panel':
+            panel_targets.append(prefix)
+        i = j
+    else:
+        i += 1
+
+for prefix in panel_targets:
+    target_header = f'{prefix}[General]\n'
+    idx = lines.index(target_header) if target_header in lines else None
+
+    if idx is not None:
+        j = idx + 1
+        replaced = False
+        while j < len(lines) and not lines[j].startswith('['):
+            if lines[j].startswith('height='):
+                lines[j] = 'height=44\n'
+                replaced = True
+                break
+            j += 1
+        if not replaced:
+            lines.insert(idx + 1, 'height=44\n')
+    else:
+        lines.append(target_header)
+        lines.append('height=44\n')
+
+with open(path, 'w') as f:
+    f.writelines(lines)
+PYEOF
+fi
+echo -e "${GREEN}  ✓ Done${NC}"
+
 kstart5 plasmashell >/dev/null 2>&1 &
 kstart6 plasmashell >/dev/null 2>&1 &
+
+# Re-apply the Plasma Style (panel/Kickoff chrome background) again
+# now that plasmashell has actually restarted — writing plasmarc
+# before the restart wasn't reliably enough to make an already-running
+# panel repaint with the new background, so do it again live once the
+# new process is up.
+( sleep 2
+  plasma-apply-desktoptheme "$PLASMA_STYLE" 2>/dev/null
+  kwriteconfig5 --file plasmarc --group Theme --key name "$PLASMA_STYLE"
+  qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.refreshCurrentShell 2>/dev/null || true
+) &
 
 echo ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════╗${NC}"

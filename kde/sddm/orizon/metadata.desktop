@@ -1,16 +1,13 @@
 [SddmGreeterTheme]
-Name=maya
-Description=Simple Material inspired theme
-Author=Sanjeev Premi
-Copyright=(c) 2016, Sanjeev Premi
-License=CC-BY-SA
+Name=orizon.sddm
+Description=apple like style
+Author=zayronxio
+Copyright=(c) 2025, zayronxio
+License=gpl3.0
 Type=sddm-theme
-Version=0.1
-Website=https://github.com/spremi
-Screenshot=screenshots/hi_IN.png
+Version=1.0
+Screenshot=screenshot.jpg
 MainScript=Main.qml
 ConfigFile=theme.conf
-TranslationsDirectory=translations
-Email=spremi@ymail.com
-Theme-Id=maya
-Theme-API=2.0
+Theme-Id=orizon.sddm
+QtVersion=5

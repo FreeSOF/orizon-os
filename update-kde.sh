@@ -69,6 +69,14 @@ log_ok "apt is free"
 # ── 3. Pull the latest ORIZON version from the repo ────────────────────────
 log_step "Fetching the latest ORIZON version..."
 if [ -d "$ORIZON_DIR/.git" ]; then
+    # Older clones still point at the previous owner (publuseba) — repoint them.
+    OLD_ORIGIN="$(git -C "$ORIZON_DIR" remote get-url origin 2>/dev/null || true)"
+    case "$OLD_ORIGIN" in
+        *publuseba/orizon-os*)
+            git -C "$ORIZON_DIR" remote set-url origin https://github.com/FreeSOF/orizon-os.git
+            log_ok "Repo remote moved to github.com/FreeSOF/orizon-os"
+            ;;
+    esac
     git -C "$ORIZON_DIR" fetch --quiet origin
     git -C "$ORIZON_DIR" reset --quiet --hard origin/main
     log_ok "Repo updated to the latest commit on main"
@@ -83,7 +91,58 @@ apt-get update -qq
 log_ok "Package lists updated"
 
 log_step "Upgrading system packages..."
-apt-get dist-upgrade -y "${DPKG_OPTS[@]}"
+# Some postinst scripts (snapd, libfprint, and others that call `systemctl
+# restart`/`reload` under the hood via deb-systemd-invoke) can spawn either
+# `systemd-tty-ask-password-agent` or `udevadm trigger`/`settle` — and both
+# are known to hang forever in a VM (or any session with no console/udev
+# queue to actually service them). apt then sits at "Setting up ..."
+# indefinitely at 0% CPU, with no way to tell an unattended run apart from
+# a package that's just slow.
+#
+# Run dist-upgrade in the background and watch for exactly those two
+# known-hang-prone helper processes. dpkg/apt itself is never touched here —
+# only these specific children, and only once each has had a real grace
+# period to finish on its own (most of the time they exit in well under a
+# second).
+UPGRADE_LOG="$(mktemp /tmp/orizon-dist-upgrade.XXXXXX.log)"
+apt-get dist-upgrade -y "${DPKG_OPTS[@]}" > "$UPGRADE_LOG" 2>&1 &
+UPGRADE_PID=$!
+
+while kill -0 "$UPGRADE_PID" 2>/dev/null; do
+    sleep 5
+
+    # A systemd-tty-ask-password-agent with nothing left in the queue has
+    # no request to relay — always safe to kill once it's had a moment to
+    # pick up whatever it was launched for.
+    for pid in $(pgrep -f systemd-tty-ask-password-agent 2>/dev/null); do
+        age=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ')
+        if [ -n "$age" ] && [ "$age" -ge 20 ] && [ -z "$(ls -A /run/systemd/ask-password/ 2>/dev/null)" ]; then
+            log_warn "Killing stuck systemd-tty-ask-password-agent (pid $pid, no pending password request)"
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+
+    # udevadm trigger/settle normally returns in well under a second —
+    # give it a full minute before assuming it's actually stuck.
+    for pid in $(pgrep -f "udevadm (trigger|settle)" 2>/dev/null); do
+        age=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ')
+        if [ -n "$age" ] && [ "$age" -ge 60 ]; then
+            log_warn "Killing stuck udevadm process (pid $pid, running ${age}s)"
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+done
+
+wait "$UPGRADE_PID"
+UPGRADE_STATUS=$?
+cat "$UPGRADE_LOG"
+rm -f "$UPGRADE_LOG"
+
+if [ "$UPGRADE_STATUS" -ne 0 ]; then
+    log_warn "apt-get dist-upgrade reported errors — repairing with dpkg --configure -a"
+    dpkg --configure -a 2>/dev/null || true
+    apt-get install -f -y 2>/dev/null || true
+fi
 log_ok "System packages upgraded"
 
 # ── 5. Re-apply ORIZON branding/theme/config — same as a fresh install ────

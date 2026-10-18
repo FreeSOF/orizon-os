@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Orizon
+Comment=ORIZON Linux — Light window decoration
+Type=Service
+X-KDE-ServiceTypes=Plasma/Decoration
+X-KDE-PluginInfo-Name=__aurorae__svg__Orizon
+X-KDE-PluginInfo-Author=ORIZON Linux
+X-KDE-PluginInfo-Version=2.0
+X-KDE-PluginInfo-License=GPL

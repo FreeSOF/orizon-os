@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 32">
+  <g id="active-center">
+    <rect width="46" height="32" fill="transparent"/>
+    <rect x="17" y="11" width="12" height="10" rx="1" fill="none" stroke="#444" stroke-width="1.4"/>
+  </g>
+  <g id="active-hover-center">
+    <rect width="46" height="32" fill="rgba(0,0,0,0.08)"/>
+    <rect x="17" y="11" width="12" height="10" rx="1" fill="none" stroke="#111" stroke-width="1.4"/>
+  </g>
+  <g id="active-pressed-center">
+    <rect width="46" height="32" fill="rgba(0,0,0,0.16)"/>
+    <rect x="17" y="11" width="12" height="10" rx="1" fill="none" stroke="#111" stroke-width="1.4"/>
+  </g>
+  <g id="inactive-center">
+    <rect width="46" height="32" fill="transparent"/>
+    <rect x="17" y="11" width="12" height="10" rx="1" fill="none" stroke="#aaa" stroke-width="1.2"/>
+  </g>
+</svg>

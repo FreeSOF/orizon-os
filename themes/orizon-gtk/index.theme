@@ -7,6 +7,6 @@ Encoding=UTF-8
 [X-GNOME-Metatheme]
 GtkTheme=Orizon-Dark
 MetacityTheme=Orizon-Dark
-IconTheme=Papirus-Dark
+IconTheme=ePapirus-Dark
 CursorTheme=DMZ-White
 ButtonLayout=close,minimize,maximize:menu
