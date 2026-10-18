@@ -25,6 +25,3 @@ sudo ./install-kde.sh
 ![Orizon3](https://i.postimg.cc/Jn4k8wK0/Snimok-ekrana-2026-10-18-222420.png)
 
 *PUBLIC BETA. THIS PROJECT MAY BE UNSTABLE. ALL IS SUBJECT TO CHANGE.*
-
-
-end of readme )
